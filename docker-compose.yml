@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Service Backend API FastAPI
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: weather-backend
+    working_dir: /app/backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    restart: always
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=3
+
+  # Service Tự động Cập nhật Dữ liệu và Dự báo hàng giờ (Cron Updater Daemon)
+  updater:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: weather-updater
+    working_dir: /app
+    command: python src/cron_updater.py
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    restart: always
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=3
+    depends_on:
+      - backend
+
+  # Service Frontend React JS (Nginx phục vụ file tĩnh)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: weather-frontend
+    ports:
+      - "5174:80"
+    restart: always
+    depends_on:
+      - backend
